@@ -1,0 +1,36 @@
+name: Tests
+
+on:
+    pull_request:
+
+jobs:
+    tests:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 18
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Install playwright
+              run: npx playwright install
+
+            - name: Run and test
+              run: npm run run-and-test
+              env:
+                  OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+
+            - name: Upload results
+              uses: actions/upload-artifact@v4
+              if: ${{ !cancelled() }}
+              with:
+                  name: playwright-report
+                  path: playwright-report/
+                  retention-days: 30

@@ -132,3 +132,9 @@ dist
 
 # Database is local at the moment so we should not push it
 db.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

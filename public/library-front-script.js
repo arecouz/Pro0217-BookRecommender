@@ -29,6 +29,7 @@ async function createUser() {
 			body: JSON.stringify({ username: username }),
 		});
 		let json = await response.json();
+		console.log(json);
 		localStorage.setItem("userID", json["id"]);
 	} catch (error) {
 		console.error("Error:", error);

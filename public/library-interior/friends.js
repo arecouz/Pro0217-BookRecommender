@@ -30,6 +30,14 @@ let allUserIDs = [];
 let friendIDs;
 let remainingUserIDs;
 
+const clearFriendsAndRemainingUsersContainers = () => {
+	for (let i = 1; i < friendsContainer.children.length; i++) {
+		friendsContainer.children[i].remove();
+	}
+
+	remainingUsersContainer.replaceChildren();
+};
+
 const getFriendsAndRemainingUsers = async () => {
 	// Get all users' IDs
 	const response = await fetch(`/users/`);
@@ -100,6 +108,15 @@ const linksToFriendsLists = async () => {
 
 // Create options to add remaining users as friends
 const referencesToRemainingUsers = async () => {
+	// Get current user's pending IDs
+	const userInfo = await fetch(`/users/${currentUserID}`);
+	if (!userInfo.ok) {
+		console.error("Failed to fetch user info");
+		return;
+	}
+	const userData = await userInfo.json();
+	pendingIDs = userData.pending;
+
 	for (let i = 0; i < remainingUserIDs.length; i++) {
 		const remainingUserInfo = await fetch(`/users/${remainingUserIDs[i]}`);
 		if (!remainingUserInfo.ok) {
@@ -109,28 +126,53 @@ const referencesToRemainingUsers = async () => {
 		const remainingUserData = await remainingUserInfo.json();
 
 		// Add 'link' for remaining user
-		const remainingUserLink = document.createElement("a");
-		remainingUserLink.id = `link-for-user-${remainingUserData.id}`;
-		remainingUserLink.innerText = `${remainingUserData.username}`;
-		remainingUserLink.href = "#";
-		remainingUsersContainer.appendChild(remainingUserLink);
-		remainingUserLink.addEventListener("click", () => {
-			addNewFriend(remainingUserData.id);
+		const remainingUser = document.createElement("div");
+		remainingUser.id = `${remainingUserData.id}-element`;
+		remainingUser.classList.add("remaining-user");
+		remainingUser.innerHTML = `<a href="#">${remainingUserData.username}</a>`;
+		remainingUsersContainer.appendChild(remainingUser);
+
+		const hourglassIcon = document.createElement("img");
+		hourglassIcon.src = "../images/hourglass.gif";
+		hourglassIcon.classList.add("hourglass-icon");
+		hourglassIcon.id = `hourglass-for-${remainingUserData.id}`;
+
+		if (!pendingIDs.includes(remainingUserIDs[i])) {
+			hourglassIcon.classList.add("hidden");
+		}
+
+		document.getElementById(`${remainingUserData.id}-element`).appendChild(hourglassIcon);
+
+		remainingUser.addEventListener("click", () => {
+			sendFriendRequest(remainingUserData.id);
 		});
 	}
 };
 
-// Add new friend
-const addNewFriend = async (selectedUserID) => {
-	// Add selected user ID to current user's friends list
+// Send new friend request
+const sendFriendRequest = async (selectedUserID) => {
+	// Check if you've already sent a friend request to the selected user and if so, exit function
+	const userInfo = await fetch(`/users/${currentUserID}`);
+	if (!userInfo.ok) {
+		console.error("Failed to fetch user info");
+		return;
+	}
+	const userData = await userInfo.json();
+	pendingIDs = userData.pending;
+
+	if (pendingIDs.includes(selectedUserID)) {
+		return;
+	}
+
+	// Add selected user ID to current user's pending friends list
 	const dataToSend = {
 		user_id: currentUserID,
 		friend_id: selectedUserID,
-		key: "friends",
+		key: "pending",
 		add: true,
 	};
 
-	fetch("/users/update-friend", {
+	fetch("/users/update-pending", {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -142,9 +184,33 @@ const addNewFriend = async (selectedUserID) => {
 			console.error("Error:", error);
 		});
 
-	// Remove 'link' from remaining users list
-	document.getElementById(`link-for-user-${selectedUserID}`).remove();
+	// Show hourglass icon for selected user
+	document.getElementById(`hourglass-for-${selectedUserID}`).classList.remove("hidden");
 
+	// Add new friend request message to selected user's inbox
+	const messageToSend = {
+		addressee_id: selectedUserID,
+		sender_id: parseInt(currentUserID),
+		message_type: "friend_request",
+		key: "inbox",
+		add: true,
+	};
+
+	fetch("/users/update-inbox", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(messageToSend),
+	})
+		.then((response) => response.json())
+		.catch((error) => {
+			console.error("Error:", error);
+		});
+};
+
+// Add new friend
+const addNewFriend = async (selectedUserID) => {
 	// Get new friend's data from database
 	const newFriendInfo = await fetch(`/users/${selectedUserID}`);
 	if (!newFriendInfo.ok) {
@@ -218,14 +284,21 @@ const removeFriend = async (selectedUserID) => {
 	const estrangedFriendData = await estrangedFriendInfo.json();
 
 	// Create 'link' for user in list of remaining users
-	const estrangedFriendLink = document.createElement("a");
-	estrangedFriendLink.id = `link-for-user-${estrangedFriendData.id}`;
-	estrangedFriendLink.innerText = `${estrangedFriendData.username}`;
-	estrangedFriendLink.href = "#";
-	remainingUsersContainer.appendChild(estrangedFriendLink);
-	estrangedFriendLink.addEventListener("click", () => {
+	const estrangedFriend = document.createElement("div");
+	estrangedFriend.id = `${estrangedFriendData.id}-element`;
+	estrangedFriend.classList.add("remaining-user");
+	estrangedFriend.innerHTML = `<a href ="#">${estrangedFriendData.username}</a>`;
+	remainingUsersContainer.appendChild(estrangedFriend);
+	estrangedFriend.addEventListener("click", () => {
 		addNewFriend(estrangedFriendData.id);
 	});
+
+	const hourglassIcon = document.createElement("img");
+	hourglassIcon.src = "../images/hourglass.gif";
+	hourglassIcon.classList.add("hourglass-icon");
+	hourglassIcon.classList.add("hidden");
+
+	document.getElementById(`${estrangedFriendData.id}-element`).appendChild(hourglassIcon);
 };
 
 getFriendsAndRemainingUsers();

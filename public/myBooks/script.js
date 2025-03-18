@@ -54,8 +54,6 @@ const createMyBooksElements = (books, bookContainer, id_reason_dict) => {
 
 if (username) {
 	document.getElementById("readingListTitle").textContent = `${username}'s Reading List`;
-	document.getElementById("recommendationsListTitle").textContent =
-		`${username}'s Recommendation List`;
 }
 
 async function fetchUsersBooks() {
@@ -66,28 +64,36 @@ async function fetchUsersBooks() {
 	}
 	const userData = await userInfo.json();
 
-	// Fetch book details using the likes array
-	const book_ids = userData.likes.map((bookData) => bookData.id);
-	const response = await fetch("/books/fetchBooksByIDs", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ ids: book_ids }),
-	});
+	if (userData.likes.length > 0) {
+		// Fetch book details using the likes array
+		const book_ids = userData.likes.map((bookData) => bookData.id);
+		const response = await fetch("/books/fetchBooksByIDs", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ ids: book_ids }),
+		});
 
-	if (!response.ok) {
-		console.error("Failed to fetch book details");
-		return;
+		if (!response.ok) {
+			console.error("Failed to fetch book details");
+			return;
+		}
+		const id_reason_dict = Object.fromEntries(
+			userData.likes.map(({ id, reason }) => [id, reason]),
+		);
+		const books = await response.json();
+		const bookContainer = document.getElementById("my-books-container");
+		bookContainer.replaceChildren(); //delete all current children (in case this container is being refreshed)
+		createMyBooksElements(books, bookContainer, id_reason_dict);
+	} else {
+		// No books to display
+		const midSection = document.querySelector(".mid-section");
+		midSection.innerHTML = "<h3>No books</h3>";
+		const librarianDialogue = document.querySelector(".dialogue-div");
+		librarianDialogue.innerHTML = `<p>Oh no! You haven't liked any books yet, when you do I'll be sure to keep track.</p>`;
 	}
-
-	const id_reason_dict = Object.fromEntries(userData.likes.map(({ id, reason }) => [id, reason]));
-	const books = await response.json();
-	const bookContainer = document.getElementById("my-books-container");
-	bookContainer.replaceChildren(); //delete all current children (in case this container is being refreshed)
-	createMyBooksElements(books, bookContainer, id_reason_dict);
 }
 
 async function fetchUserRecommendation() {
-	console.log(`userID is ${userId}`);
 	const response = await fetch(`/recommendations/byUserPreferences/${userId}`, {
 		method: "POST",
 		headers: {
@@ -99,6 +105,9 @@ async function fetchUserRecommendation() {
 	const bookRecommendationContainer = document.getElementById("my-recommendations-container");
 	const length = 4;
 	createBookElements(data, length, bookRecommendationContainer, fetchUsersBooks);
+
+	const recomendationsText = document.querySelector("#recomendations-text");
+	recomendationsText.innerHTML = `<p>Based on your reading list you might like these!</p>`;
 }
 
 fetchUsersBooks();

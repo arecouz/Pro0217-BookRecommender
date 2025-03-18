@@ -30,10 +30,10 @@ export async function fetchBooksByIDs(IDs) {
 export function completeBookWithCoverAndID(booksInfoFromGoogleBooks, recommendations) {
 	let coverURLSandGoogleBooksID = [];
 	if (booksInfoFromGoogleBooks && booksInfoFromGoogleBooks.length > 0) {
-		coverURLSandGoogleBooksID = booksInfoFromGoogleBooks.map((book) => ({
+		coverURLSandGoogleBooksID = booksInfoFromGoogleBooks.map((book, i) => ({
 			cover:
 				book.items?.[0]?.volumeInfo?.imageLinks?.thumbnail ||
-				`https://placehold.co/128x170?text=${encodeURIComponent(recommendations.books[coverURLSandGoogleBooksID.length].title)}`,
+				`https://placehold.co/128x170?text=${encodeURIComponent(recommendations.books[i].title)}`,
 			id: book.items?.[0]?.id,
 		}));
 	} else {
